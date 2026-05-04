@@ -1,0 +1,56 @@
+# meeting-digest
+
+Weekly meeting → LinkedIn content pipeline. Reads recent client/sales meeting transcripts, extracts recurring themes via RAG over the all-time corpus, and produces a 30-day LinkedIn content calendar plus draft posts. Stores results in Supabase and emails the digest.
+
+## What it does
+
+1. **Pull recent meetings** (full transcripts, last 7 by default) from the meeting source (Granola / Otter / etc.).
+2. **RAG over all-time corpus** using Voyage embeddings to surface recurring problems, objections, and wins across every meeting in scope — not just this week's.
+3. **Claude analysis.** Extracts:
+   - Raw moments (hooks, pain points, objections, wins)
+   - Recurring problems (with frequency, recency, representative quotes, source meetings)
+   - LinkedIn-friendly content angles
+   - Drafted posts (hook, body, CTA, hashtags) tied back to source moments
+   - 30-day post calendar
+4. **Persist** to Supabase `content_calendar` (one row per ISO week).
+5. **Email** the digest via Resend.
+
+## Layout
+
+```
+run_weekly.py        # entry point + CLI
+claude_analyze.py    # prompt + JSON-mode parsing
+rag_search.py        # Voyage embedding + Supabase pgvector lookup
+supabase_store.py    # write content_calendar rows
+email_digest.py      # Resend HTML email
+schema.sql           # run this in Supabase SQL Editor first
+requirements.txt
+```
+
+## Setup
+
+1. Create the Supabase table: paste `schema.sql` into the Supabase SQL Editor.
+2. `pip install -r requirements.txt`
+3. `.env`:
+   ```
+   ANTHROPIC_API_KEY=
+   SUPABASE_URL=
+   SUPABASE_KEY=
+   VOYAGE_API_KEY=
+   RESEND_API_KEY=
+   DIGEST_TO_EMAIL=
+   ```
+
+## Running
+
+```bash
+python run_weekly.py                          # full weekly run
+python run_weekly.py --dry-run                # print, no email or DB write
+python run_weekly.py --email-only             # re-send from an existing Supabase row
+python run_weekly.py --week-of 2026-03-30     # explicit Monday-of-week
+```
+
+## Schema
+
+`content_calendar` (one row per `week_of` Monday) holds:
+`recordings_analyzed`, `raw_moments`, `recurring_problems`, `content_angles`, `linkedin_posts`, `calendar_30day`. All JSONB. See `schema.sql` for the full shape.
