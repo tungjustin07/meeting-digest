@@ -34,11 +34,13 @@ requirements.txt
 3. `.env`:
    ```
    ANTHROPIC_API_KEY=
+   CLAUDE_MODEL=claude-haiku-4-5-20251001
    SUPABASE_URL=
-   SUPABASE_KEY=
+   SUPABASE_SERVICE_KEY=
    VOYAGE_API_KEY=
    RESEND_API_KEY=
-   DIGEST_TO_EMAIL=
+   EMAIL_FROM=
+   EMAIL_TO=
    ```
 
 ## Running
