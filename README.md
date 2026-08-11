@@ -1,6 +1,11 @@
 # meeting-digest
 
-Weekly meeting → LinkedIn content pipeline. Reads recent client/sales meeting transcripts, extracts recurring themes via RAG over the all-time corpus, and produces a 30-day LinkedIn content calendar plus draft posts. Stores results in Supabase and emails the digest.
+**Public repository.** Weekly meeting → LinkedIn content pipeline. Reads recent client/sales meeting transcripts, extracts recurring themes via RAG over the all-time corpus, and produces a 30-day LinkedIn content calendar plus draft posts. Stores results in Supabase and emails the digest.
+
+```bash
+git clone https://github.com/tungjustin07/meeting-digest.git
+cd meeting-digest
+```
 
 ## What it does
 
@@ -31,7 +36,7 @@ requirements.txt
 
 1. Create the Supabase table: paste `schema.sql` into the Supabase SQL Editor.
 2. `pip install -r requirements.txt`
-3. `.env`:
+3. Create a local `.env` (never commit it):
    ```
    ANTHROPIC_API_KEY=
    CLAUDE_MODEL=claude-haiku-4-5-20251001
@@ -56,3 +61,13 @@ python run_weekly.py --week-of 2026-03-30     # explicit Monday-of-week
 
 `content_calendar` (one row per `week_of` Monday) holds:
 `recordings_analyzed`, `raw_moments`, `recurring_problems`, `content_angles`, `linkedin_posts`, `calendar_30day`. All JSONB. See `schema.sql` for the full shape.
+
+## GitHub Actions / secrets
+
+This repo is **public**. Put API keys and email settings in encrypted Actions secrets (Settings → Secrets and variables → Actions), not in the repository. Forks do not inherit secrets.
+
+## Security
+
+- Keep meeting transcripts, Supabase keys, and email credentials out of git
+- Prefer `--dry-run` when testing so client content is not emailed by accident
+- Review generated LinkedIn drafts before publishing — they may contain sensitive client language
