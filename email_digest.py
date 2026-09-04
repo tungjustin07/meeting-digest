@@ -19,11 +19,18 @@ log = logging.getLogger("email_digest")
 
 def send(week_start: date, week_end: date, payload: dict, dry_run: bool = False):
     summary = payload.get("raw_moments", {}).get("summary_text", "No summary generated.")
-    n_meetings = len(payload.get("recordings_analyzed", []))
+    analyzed = payload.get("recordings_analyzed") or []
+    n_meetings = len(analyzed)
 
-    subject = f"Meeting Digest — {week_start.strftime('%b %-d')}–{week_end.strftime('%-d, %Y')} | {n_meetings} meetings"
-    html = _render_html(week_start, week_end, summary, n_meetings)
-    text = _render_text(week_start, week_end, summary, n_meetings)
+    # The summary covers the meetings actually analyzed, whose span can start
+    # before week_start — week_of is only the storage key, not the period.
+    start, end = _covered_range(analyzed, week_start, week_end)
+    period = _format_range(start, end)
+    count = f"{n_meetings} {'meeting' if n_meetings == 1 else 'meetings'}"
+
+    subject = f"Meeting Digest — {period} | {count}"
+    html = _render_html(period, summary, count)
+    text = _render_text(period, summary, count)
 
     if dry_run:
         print("\n=" + subject)
@@ -42,7 +49,28 @@ def send(week_start: date, week_end: date, payload: dict, dry_run: bool = False)
     log.info(f"Email sent: {subject}")
 
 
-def _render_html(week_start: date, week_end: date, summary: str, n_meetings: int) -> str:
+def _covered_range(analyzed: list[dict], fallback_start: date, fallback_end: date) -> tuple[date, date]:
+    """Actual first/last meeting date in the analyzed set."""
+    days = sorted(
+        d for d in ((r.get("started_at") or "")[:10] for r in analyzed) if len(d) == 10
+    )
+    if not days:
+        return fallback_start, fallback_end
+    return date.fromisoformat(days[0]), date.fromisoformat(days[-1])
+
+
+def _format_range(start: date, end: date) -> str:
+    """Never drop the end month — 'Aug 31–4' was the old bug."""
+    if start == end:
+        return f"{end:%b %-d, %Y}"
+    if start.year != end.year:
+        return f"{start:%b %-d, %Y} – {end:%b %-d, %Y}"
+    if start.month != end.month:
+        return f"{start:%b %-d} – {end:%b %-d, %Y}"
+    return f"{start:%b %-d}–{end:%-d, %Y}"
+
+
+def _render_html(period: str, summary: str, count: str) -> str:
     summary_html = _escape(summary)
     summary_html = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", summary_html)
     summary_html = re.sub(r"\*(.+?)\*", r"<strong>\1</strong>", summary_html)
@@ -59,8 +87,8 @@ def _render_html(week_start: date, week_end: date, summary: str, n_meetings: int
 
     <div style="background:#111;padding:24px 32px 20px">
       <p style="margin:0 0 4px;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.1em">Weekly Meeting Digest</p>
-      <h1 style="margin:0;font-size:22px;font-weight:700;color:#fff">{week_start.strftime('%b %-d')} – {week_end.strftime('%b %-d, %Y')}</h1>
-      <p style="margin:6px 0 0;font-size:13px;color:#888">{n_meetings} meetings analyzed</p>
+      <h1 style="margin:0;font-size:22px;font-weight:700;color:#fff">{period}</h1>
+      <p style="margin:6px 0 0;font-size:13px;color:#888">{count} analyzed</p>
     </div>
 
     <div style="padding:24px 32px">
@@ -74,10 +102,10 @@ def _render_html(week_start: date, week_end: date, summary: str, n_meetings: int
 </html>"""
 
 
-def _render_text(week_start: date, week_end: date, summary: str, n_meetings: int) -> str:
+def _render_text(period: str, summary: str, count: str) -> str:
     return (
-        f"MEETING DIGEST — {week_start.strftime('%b %-d')} – {week_end.strftime('%b %-d, %Y')}\n"
-        f"{n_meetings} meetings analyzed\n"
+        f"MEETING DIGEST — {period}\n"
+        f"{count} analyzed\n"
         f"{'=' * 70}\n\n"
         f"{summary}"
     )

@@ -77,9 +77,11 @@ def main():
         log.warning("No recordings with transcripts found")
         sys.exit(0)
 
+    # Only the recordings actually summarized — the all-time corpus still feeds
+    # RAG below, but it is not what the digest reports on.
     recordings_meta = [
         {"id": r["id"], "title": r["title"], "started_at": r.get("started_at", "")[:10], "client_tag": r.get("client_tag")}
-        for r in all_recordings
+        for r in recordings
     ]
 
     # ── Step 2: RAG search for recurring themes ───────────────────────────────
